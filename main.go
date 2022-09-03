@@ -8,12 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load(".env")
-	endpoint := os.Getenv("REDIS_ENPOINT")
+	endpoint := os.Getenv("REDIS_ENDPOINT")
 	password := os.Getenv("REDIS_PASSWORD")
 	options := redis.DialPassword(password)
 	redis, err := redis.Dial("tcp", endpoint, options)
