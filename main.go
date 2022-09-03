@@ -19,8 +19,8 @@ func main() {
 		panic(err)
 	}
 	defer redis.Close()
-  r := gin.Default()
-  r.GET("/ping", func(c *gin.Context) {
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
 		sec:= time.Now().Unix()
 		reply, err := redis.Do("SET", "time", sec)
 		if err != nil {
@@ -28,7 +28,7 @@ func main() {
 		}
 		fmt.Println(reply)
     c.JSON(http.StatusOK, gin.H{
-      "message": "pong",
+			"message": "pong",
 			"time": sec,
     })
   })
