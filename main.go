@@ -21,8 +21,8 @@ func main() {
 	}
 	defer redisConnection.Close()
 	r := gin.Default()
-	r.GET("/shorten", shorten)
-  r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	r.POST("/shorten", shorten)
+  r.Run()
 }
 
 func shorten(c *gin.Context) {
