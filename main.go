@@ -1,11 +1,11 @@
 package main
 
 import (
-	"io"
-	"os"
-	"strings"
+	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -15,36 +15,46 @@ func main() {
 	endpoint := os.Getenv("REDIS_ENDPOINT")
 	password := os.Getenv("REDIS_PASSWORD")
 	options := redis.DialPassword(password)
-	redisConnection, err := redis.Dial("tcp", endpoint, options)
+	var err error
+	redisConnection, err = redis.Dial("tcp", endpoint, options)
 	if err != nil {
 		panic(err)
 	}
 	defer redisConnection.Close()
 	r := gin.Default()
 	r.POST("/shorten", shorten)
+	r.GET("/:code", redirect)
   r.Run()
 }
 
 func shorten(c *gin.Context) {
-	buf := new(strings.Builder)
-	_, err := io.Copy(buf, c.Request.Body)
-	if err != nil {
-		panic(err)
+	shortenDto := ShortenDTO{}
+	if err := c.ShouldBindBodyWith(&shortenDto, binding.JSON); err != nil {
+		c.JSON(400, err)
 	}
-	str := buf.String()
 	var shortener = &URLShortener{}
-	url, err := shortener.shorten(str)
+	code, err := shortener.shorten(shortenDto.Url)
 	if err != nil {
-		panic(err)
+		c.JSON(400, err)
 	}
 	scheme := "http://"
 	if c.Request.TLS != nil {
 			scheme = "https://"
 	}
-	url = scheme + c.Request.Host + "/" + url
-	_, err = redisConnection.Do("HSET", "url", str, url)
+	url := scheme + c.Request.Host + "/" + code
+	_, err = redisConnection.Do("HSET", "url", code, shortenDto.Url)
 	if err != nil {
-		panic(err)
+		c.JSON(400, err)
 	}
 	c.JSON(200, url)
+}
+
+func redirect(c *gin.Context) {
+	code := c.Param("code")
+	fmt.Println(code)
+	url, err := redis.String(redisConnection.Do("HGET", "url", code))
+	if err != nil {
+		c.JSON(400, err)
+	}
+	c.Redirect(http.StatusMovedPermanently, url)
 }
