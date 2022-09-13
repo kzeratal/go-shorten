@@ -31,12 +31,12 @@ func main() {
 func shorten(c *gin.Context) {
 	shortenDto := ShortenDTO{}
 	if err := c.ShouldBindBodyWith(&shortenDto, binding.JSON); err != nil {
-		c.JSON(400, err)
+		panic(err)
 	}
 	var shortener = &URLShortener{}
 	code, err := shortener.shorten(shortenDto.Url)
 	if err != nil {
-		c.JSON(400, err)
+		panic(err)
 	}
 	scheme := "http://"
 	if c.Request.TLS != nil {
@@ -45,7 +45,7 @@ func shorten(c *gin.Context) {
 	url := scheme + c.Request.Host + "/" + code
 	_, err = redisConnection.Do("HSET", "url", code, shortenDto.Url)
 	if err != nil {
-		c.JSON(400, err)
+		panic(err)
 	}
 	c.JSON(200, url)
 }
