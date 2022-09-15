@@ -2,10 +2,14 @@ package handler
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/binary"
+	"fmt"
 	"goshorten/internal/redis"
 	"net/http"
 	"net/url"
 
+	"github.com/catinello/base62"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 )
@@ -19,13 +23,26 @@ func Shorten(c *gin.Context) {
 		return
 	}
 	// validate the URLs
+	hasher := md5.New()
+	shortenedURLs := map[string]string{}
 	for _, URL := range URLs {
 		if _, err := url.ParseRequestURI(URL); err != nil {
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
+		hasher.Write([]byte(URL))
+		num := binary.BigEndian.Uint64(hasher.Sum(nil))
+		data := base62.Encode(int(num))
+		shortenedURLs[URL] = data
 	}
-	if err := redis.Client.HSet(ctx, "url", "hashed").Err(); err != nil {
+	for key, value := range shortenedURLs {
+		fmt.Println(key, ": ", value)
+	}
+	pipe := redis.Client.Pipeline()
+	for key, value := range shortenedURLs {
+		pipe.HSet(ctx, "url", map[string]interface{} { key: value })
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
